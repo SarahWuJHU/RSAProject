@@ -5,10 +5,10 @@ enum States = {
   menu,
   calibrate,
   automatic,
-  manuel
+  manual
 };
 
-char** menu_items = { "Calibrate", "Automatic", "Manuel" };
+char** menu_items = { "Calibrate", "Automatic", "manual" };
 char** calibrate_items = { "Open Position", "Close Position", "Half Position", "Temperature" };
 
 //MenuDisplays Menu, Calibrate;
@@ -97,7 +97,7 @@ void loop() {
       if (digitalRead(selectButtonPin) == LOW) {
       }
       break;
-    case manuel:
+    case manual:
       if (digitalRead(upButtonPin) == LOW) {
       }
       if (digitalRead(downButtonPin) == LOW) {
