@@ -1,4 +1,5 @@
 #include "MenuDisplay.h"
+
 enum States = {
   initializing,
   menu,
