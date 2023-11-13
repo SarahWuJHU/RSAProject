@@ -1,3 +1,4 @@
+#include "MenuDisplay.h"
 enum States = {
   initializing,
   menu,
@@ -6,14 +7,24 @@ enum States = {
   manuel
 };
 
+char** menu_items = { "Calibrate", "Automatic", "Manuel" };
+char** calibrate_items = { "Open Position", "Close Position", "Half Position", "Temperature" };
+
+//MenuDisplays Menu, Calibrate;
+int upButtonPin;
+int downButtonPin;
+int exitButtonPin;
+int selectButtonPin;
+
 enum CursorStates = {
-  calibrate, 
+  calibrate,
   automatic,
   maunuel,
-  increase, 
-  decrease, 
-
+  increase,
+  decrease,
 }
+
+enum ControlOption = { up, down, select }
 
 struct Settings {
   long open_pose;
@@ -24,31 +35,74 @@ struct Settings {
 
 const long lighting_thres;
 //store in ee prom
-Settings settings = {0, 0, 0, 0};
+Settings settings = { 0, 0, 0, 0 };
 States myState = initializing;
+
+void handleExit() {
+  myState = menu;
+}
+
+void handleDisplay(MenuDisplay* menu, ControlOption option) {
+  switch (option) {
+    case up:
+      break;
+    case down:
+      break;
+    case select:
+      break;
+  }
+}
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
+  pinMode(upButtonPin, INPUT_PULLUP);
+  pinMode(downButtonPin, INPUT_PULLUP);
+  pinMode(exitButtonPin, INPUT_PULLUP);
+  pinMode(selectButtonPin, INPUT_PULLUP);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   switch (myState) {
     case initializing:
-    //loading settings
+      //loading settings
       break;
     case menu:
+      if (digitalRead(upButtonPin) == LOW) {
+      }
+      if (digitalRead(downButtonPin) == LOW) {
+      }
+      if (digitalRead(selectButtonPin) == LOW) {
+      }
+      // if down button pressed
       break;
     case calibrate:
-    // calibration start
-    // open state, close state, half open
-    // desired temperature
-
+      // calibration start
+      // open state, close state, half open
+      // desired temperature
+      if (digitalRead(upButtonPin) == LOW) {
+      }
+      if (digitalRead(downButtonPin) == LOW) {
+      }
+      if (digitalRead(selectButtonPin) == LOW) {
+      }
       break;
     case automatic:
+      if (digitalRead(upButtonPin) == LOW) {
+      }
+      if (digitalRead(downButtonPin) == LOW) {
+      }
+      if (digitalRead(selectButtonPin) == LOW) {
+      }
       break;
     case manuel:
+      if (digitalRead(upButtonPin) == LOW) {
+      }
+      if (digitalRead(downButtonPin) == LOW) {
+      }
+      if (digitalRead(selectButtonPin) == LOW) {
+      }
       break;
   }
 }
@@ -154,10 +208,3 @@ void loop() {
   delay(1000);
 }
 */
-void setup() {
-  // put your setup code here, to run once:
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-}
