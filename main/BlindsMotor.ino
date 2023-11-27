@@ -19,12 +19,12 @@ void BlindsMotor::stopMoving() const {
   digitalWrite(downPin, LOW);
 }
 
-void BlindsMotor::moveToward(int pos, int tollerance) const {
+void BlindsMotor::moveToward(int pos, int tolerance) const {
   int current_pos = getEncoderPos();
   
-  if (current_pos < pos - tollerance)
+  if (current_pos < pos - tolerance)
     moveUp();
-  else if (getEncoderPos() > pos + tollerance)
+  else if (current_pos > pos + tolerance)
     moveDown();
   else
     stopMoving();

@@ -20,7 +20,7 @@ int selectButtonPin;
 enum CursorStates = {
   calibrate,
   automatic,
-  maunuel,
+  manual,
   increase,
   decrease,
 }

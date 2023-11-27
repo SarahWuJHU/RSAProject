@@ -6,7 +6,7 @@ public:
   void moveDown() const;
   void stopMoving() const;
 
-  void moveToward(int pos, int tollerance) const;
+  void moveToward(int pos, int tolerance) const;
 
 private:
   int upPin;
