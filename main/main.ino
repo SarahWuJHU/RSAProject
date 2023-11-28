@@ -8,6 +8,14 @@ enum States = {
   manual
 };
 
+enum calibrationStates = {
+  menu_cali,
+  open_position,
+  close_position,
+  half_position,
+  temperature
+}
+
 char** menu_items = { "Calibrate", "Automatic", "manual" };
 char** calibrate_items = { "Open Position", "Close Position", "Half Position", "Temperature" };
 
@@ -17,15 +25,14 @@ int downButtonPin;
 int exitButtonPin;
 int selectButtonPin;
 
-enum CursorStates = {
-  calibrate,
-  automatic,
-  manual,
-  increase,
-  decrease,
-}
+static MenuDisplay menu_display("Menu", menu_items, 3);
+static MenuDisplay calibration_display("Calibration", calibrate_items, 4);
+static MotorControl motor();
+static SensorControl sensor();
 
-enum ControlOption = { up, down, select }
+enum ControlOption { up,
+                     down,
+                     select };
 
 struct Settings {
   long open_pose;
@@ -37,17 +44,23 @@ struct Settings {
 const long lighting_thres;
 //store in ee prom
 Settings settings = { 0, 0, 0, 0 };
-States myState = initializing;
+static States myState = initializing;
+static calibrationStates myCalibrationState = menu_cali;
 
 void handleExit() {
   myState = menu;
+  myCalibrationState = menu_cali;
+  menu_display.resetCursorPos();
+  calibration_display.resetCursorPos();
 }
 
-void handleDisplay(MenuDisplay* menu, ControlOption option) {
+void handleDisplay(MenuDisplay* menu_dis, ControlOption option) {
   switch (option) {
     case up:
+      menu_dis->moveCursorUp();
       break;
     case down:
+      menu_dis->moveCursorDown();
       break;
     case select:
       break;
@@ -71,10 +84,28 @@ void loop() {
       break;
     case menu:
       if (digitalRead(upButtonPin) == LOW) {
+        handleDisplay(&menu_display, up);
       }
       if (digitalRead(downButtonPin) == LOW) {
+        handleDisplay(&menu_display, down);
       }
       if (digitalRead(selectButtonPin) == LOW) {
+        pos = menu_display.getCursorPos();
+        switch (pos) {
+          case 0:
+            myState = calibrate;
+            menu_display.resetCursorPos();
+            calibration_display.resetCursorPos();
+            break;
+          case 1:
+            myState = automatic;
+            menu_display.resetCursorPos();
+            break;
+          case 2:
+            myState = manual;
+            menu_display.resetCursorPos();
+            break;
+        }
       }
       // if down button pressed
       break;
@@ -82,27 +113,92 @@ void loop() {
       // calibration start
       // open state, close state, half open
       // desired temperature
-      if (digitalRead(upButtonPin) == LOW) {
+      switch (myCalibrationState) {
+        case menu_cali:
+          if (digitalRead(upButtonPin) == LOW) {
+            handleDisplay(&calibration_display, up);
+          }
+          if (digitalRead(downButtonPin) == LOW) {
+            handleDisplay(&calibration_display, down);
+          }
+          if (digitalRead(selectButtonPin) == LOW) {
+            pos = calibration_display.getCursorPos();
+            switch (pos) {
+              case 0:
+                myCalibrationState = open_position;
+                menu_display.resetCursorPos();
+                calibration_display.resetCursorPos();
+                break;
+              case 1:
+                myCalibrationState = close_position;
+                menu_display.resetCursorPos();
+                break;
+              case 2:
+                myCalibrationState = half_position;
+                menu_display.resetCursorPos();
+                break;
+              case 3:
+                myCalibrationState = temperature;
+                menu_display.resetCursorPos();
+                break;
+            }
+          }
+          break;
+        case open_position:
+          motor.move_to_open();
+          while (digitalRead(selectButtonPin) == HIGH){
+            if (digitalRead(upButtonPin) == LOW){
+              motor.move_up();
+            }
+            if (digitalRead(downButtonPin) == LOW){
+              motor.move_down();
+            }
+          }
+          motor.set_open_position(motor.position());
+          settings.open_pose = motor.open_position;          
+          break;
+        case close_position:
+          motor.move_to_close();
+          while (digitalRead(selectButtonPin) == HIGH){
+            if (digitalRead(upButtonPin) == LOW){
+              motor.move_up();
+            }
+            if (digitalRead(downButtonPin) == LOW){
+              motor.move_down();
+            }
+          }
+          motor.set_close_position(motor.position());
+          settings.close_pose = motor.close_position;
+          break;
+        case half_position:
+          motor.move_to_half();
+          while (digitalRead(selectButtonPin) == HIGH){
+            if (digitalRead(upButtonPin) == LOW){
+              motor.move_up();
+            }
+            if (digitalRead(downButtonPin) == LOW){
+              motor.move_down();
+            }
+          }
+          motor.set_half_position(motor.position());
+          settings.half_pose = motor.half_position;
+          break;
+        case temperature:
+          //display temperature
+          
+          break
       }
-      if (digitalRead(downButtonPin) == LOW) {
-      }
-      if (digitalRead(selectButtonPin) == LOW) {
-      }
+
       break;
     case automatic:
-      if (digitalRead(upButtonPin) == LOW) {
-      }
-      if (digitalRead(downButtonPin) == LOW) {
-      }
-      if (digitalRead(selectButtonPin) == LOW) {
-      }
+      //sensor
       break;
     case manual:
       if (digitalRead(upButtonPin) == LOW) {
+        motor.move_up();
       }
       if (digitalRead(downButtonPin) == LOW) {
-      }
-      if (digitalRead(selectButtonPin) == LOW) {
+        motor.move_down();
       }
       break;
   }
