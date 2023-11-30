@@ -9,6 +9,7 @@ private:
   int numOptions;
   
   int cursorPos;
+  int scrollPos;
 
 public:
   MenuDisplay(const char* title, const char** optionNames, int numOptions);
