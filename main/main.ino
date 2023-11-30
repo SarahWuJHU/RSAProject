@@ -1,39 +1,79 @@
 #include "MenuDisplay.h"
+#include "BlindsMotor.h"
+#include "LightSense.h"
+#include "TempSense.h"
+#include "Encoder.h"
 
-enum States = {
+//OLED display settings
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#define SCREEN_WIDTH 128  // OLED display width, in pixels
+#define SCREEN_HEIGHT 64  // OLED display height, in pixels
+// Declaration for SSD1306 display connected using software SPI (default case):
+#define OLED_PICO 9
+#define OLED_CLK 10
+#define OLED_DC 11
+#define OLED_CS 12
+#define OLED_RESET 13
+
+// other settings for automatic control
+#define MOTOR_TOLERANCE 1
+#define LIGHT_THRES 300
+#define AUTO_TOLERANCE_TEMP 10
+#define AUTO_TOLERANCE_LIGHT 50
+
+enum States {
   initializing,
   menu,
   calibrate,
   automatic,
   manual
 };
-
-enum calibrationStates = {
+enum Control {
+  up,
+  down
+};
+enum calibrationStates {
   menu_cali,
   open_position,
   close_position,
   half_position,
-  temperature
-}
+  temperature_cali
+};
 
-char** menu_items = { "Calibrate", "Automatic", "manual" };
-char** calibrate_items = { "Open Position", "Close Position", "Half Position", "Temperature" };
-
-//MenuDisplays Menu, Calibrate;
-int upButtonPin;
-int downButtonPin;
-int exitButtonPin;
-int selectButtonPin;
-
+//Setting up displays
+char calibrate_word[] = "calibrate";
+char automatic_word[] = "automatic";
+char manual_word[] = "manual";
+char open_position_word[] = "open_position";
+char close_position_word[] = "close_position";
+char half_position_word[] = "half_position";
+char temperature_word[] = "temperature";
+char* menu_items[] = { calibrate_word, automatic_word, manual_word };
+char* calibrate_items[] = { open_position_word, close_position_word, half_position_word, temperature_word };
 static MenuDisplay menu_display("Menu", menu_items, 3);
 static MenuDisplay calibration_display("Calibration", calibrate_items, 4);
-static MotorControl motor();
-static SensorControl sensor();
 
-enum ControlOption { up,
-                     down,
-                     select };
+//MenuDisplays Menu, Calibrate;
+const int upButtonPin;
+const int downButtonPin;
+const int exitButtonPin;
+const int selectButtonPin;
+const int motorUpPin;
+const int motorDownPin;
+const int motorPulsePin;
+const int lightSensorPin;
+const int tempSensorPin;
 
+static BlindsMotor motor(motorUpPin, motorDownPin, motorPulsePin);
+static LightSense lightSensor(lightSensorPin);
+static TempSense tempSensor(tempSensorPin);
+Adafruit_SSD1306 display(OLED_PICO, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
+static States myState = initializing;
+static calibrationStates myCalibrationState = menu_cali;
+
+//store in ee prom
 struct Settings {
   long open_pose;
   long closed_pose;
@@ -41,28 +81,56 @@ struct Settings {
   long desired_temp;
 };
 
-const long lighting_thres;
-//store in ee prom
-Settings settings = { 0, 0, 0, 0 };
-static States myState = initializing;
-static calibrationStates myCalibrationState = menu_cali;
+Settings settings = { 0, 0, 0, 0};
+
 
 void handleExit() {
   myState = menu;
   myCalibrationState = menu_cali;
-  menu_display.resetCursorPos();
-  calibration_display.resetCursorPos();
 }
 
-void handleDisplay(MenuDisplay* menu_dis, ControlOption option) {
+void moveToHalf() {
+  while (abs(getEncoderPos() - settings.half_pose) < MOTOR_TOLERANCE) {
+    motor.moveTowardHalf(MOTOR_TOLERANCE);
+  }
+  motor.stopMoving();
+}
+
+void moveToOpen() {
+  while (abs(getEncoderPos() - settings.open_pose) < MOTOR_TOLERANCE) {
+    motor.moveTowardOpen(MOTOR_TOLERANCE);
+  }
+  motor.stopMoving();
+}
+
+void moveToClosed() {
+  while (abs(getEncoderPos() - settings.closed_pose) < MOTOR_TOLERANCE) {
+    motor.moveTowardClosed(MOTOR_TOLERANCE);
+  }
+  motor.stopMoving();
+}
+
+void moveMotorControl() {
+  while (digitalRead(selectButtonPin) == HIGH) {
+    if (digitalRead(upButtonPin) == LOW) {
+      motor.moveUp();
+    }
+    if (digitalRead(downButtonPin) == LOW) {
+      motor.moveDown();
+    }
+    if (digitalRead(upButtonPin) == HIGH && digitalRead(downButtonPin) == HIGH) {
+      motor.stopMoving();
+    }
+  }
+}
+
+void handleDisplay(MenuDisplay* menu_dis, Control option) {
   switch (option) {
     case up:
       menu_dis->moveCursorUp();
       break;
     case down:
       menu_dis->moveCursorDown();
-      break;
-    case select:
       break;
   }
 }
@@ -74,23 +142,36 @@ void setup() {
   pinMode(downButtonPin, INPUT_PULLUP);
   pinMode(exitButtonPin, INPUT_PULLUP);
   pinMode(selectButtonPin, INPUT_PULLUP);
+
+  lightSensor.setupLTR();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  // escape button logic
+  if (digitalRead(exitButtonPin) == LOW) {
+    handleExit();
+  }
   switch (myState) {
     case initializing:
       //loading settings
+      myState = menu;
       break;
     case menu:
+      menu_display.draw(display);
+      if (digitalRead(exitButtonPin) == LOW) {
+        handleExit();
+      }
       if (digitalRead(upButtonPin) == LOW) {
         handleDisplay(&menu_display, up);
+        menu_display.draw(display);
       }
       if (digitalRead(downButtonPin) == LOW) {
         handleDisplay(&menu_display, down);
+        menu_display.draw(display);
       }
       if (digitalRead(selectButtonPin) == LOW) {
-        pos = menu_display.getCursorPos();
+        int pos = menu_display.getCursorPos();
         switch (pos) {
           case 0:
             myState = calibrate;
@@ -107,22 +188,25 @@ void loop() {
             break;
         }
       }
-      // if down button pressed
+
       break;
     case calibrate:
       // calibration start
       // open state, close state, half open
       // desired temperature
+      calibration_display.draw(display);
       switch (myCalibrationState) {
         case menu_cali:
           if (digitalRead(upButtonPin) == LOW) {
             handleDisplay(&calibration_display, up);
+            calibration_display.draw(display);
           }
           if (digitalRead(downButtonPin) == LOW) {
             handleDisplay(&calibration_display, down);
+            calibration_display.draw(display);
           }
           if (digitalRead(selectButtonPin) == LOW) {
-            pos = calibration_display.getCursorPos();
+            int pos = calibration_display.getCursorPos();
             switch (pos) {
               case 0:
                 myCalibrationState = open_position;
@@ -138,170 +222,98 @@ void loop() {
                 menu_display.resetCursorPos();
                 break;
               case 3:
-                myCalibrationState = temperature;
+                myCalibrationState = temperature_cali;
                 menu_display.resetCursorPos();
                 break;
             }
           }
+          if (digitalRead(exitButtonPin) == LOW) {
+            handleExit();
+          }
           break;
         case open_position:
-          motor.move_to_open();
-          while (digitalRead(selectButtonPin) == HIGH){
-            if (digitalRead(upButtonPin) == LOW){
-              motor.move_up();
-            }
-            if (digitalRead(downButtonPin) == LOW){
-              motor.move_down();
-            }
+          moveToOpen();
+          moveMotorControl();
+          motor.openPos = getEncoderPos();
+          settings.open_pose = motor.openPos;
+          if (digitalRead(exitButtonPin) == LOW) {
+            handleExit();
           }
-          motor.set_open_position(motor.position());
-          settings.open_pose = motor.open_position;          
           break;
         case close_position:
-          motor.move_to_close();
-          while (digitalRead(selectButtonPin) == HIGH){
-            if (digitalRead(upButtonPin) == LOW){
-              motor.move_up();
-            }
-            if (digitalRead(downButtonPin) == LOW){
-              motor.move_down();
-            }
+          moveToClosed();
+          moveMotorControl();
+          motor.closedPos = getEncoderPos();
+          settings.closed_pose = motor.closedPos;
+          if (digitalRead(exitButtonPin) == LOW) {
+            handleExit();
           }
-          motor.set_close_position(motor.position());
-          settings.close_pose = motor.close_position;
           break;
         case half_position:
-          motor.move_to_half();
-          while (digitalRead(selectButtonPin) == HIGH){
-            if (digitalRead(upButtonPin) == LOW){
-              motor.move_up();
+          moveToHalf();
+          moveMotorControl();
+          motor.halfPos = getEncoderPos();
+          settings.half_pose = motor.halfPos;
+          if (digitalRead(exitButtonPin) == LOW) {
+            handleExit();
+          }
+          break;
+        case temperature_cali:
+          display.clearDisplay();
+          display.println(settings.desired_temp);
+          while (digitalRead(selectButtonPin) == HIGH) {
+            if (digitalRead(upButtonPin) == LOW) {
+              settings.desired_temp++;
+              display.clearDisplay();
+              display.println(settings.desired_temp);
             }
-            if (digitalRead(downButtonPin) == LOW){
-              motor.move_down();
+            if (digitalRead(downButtonPin) == LOW) {
+              settings.desired_temp--;
+              display.clearDisplay();
+              display.println(settings.desired_temp);
             }
           }
-          motor.set_half_position(motor.position());
-          settings.half_pose = motor.half_position;
+          if (digitalRead(exitButtonPin) == LOW) {
+            handleExit();
+          }
           break;
-        case temperature:
-          //display temperature
-          
-          break
       }
-
+      if (digitalRead(exitButtonPin) == LOW) {
+        handleExit();
+      }
       break;
     case automatic:
       //sensor
+      bool higherThanTemp = tempSensor.getTemp() > settings.desired_temp + AUTO_TOLERANCE_TEMP;
+      bool lowerThanTemp = tempSensor.getTemp() < settings.desired_temp - AUTO_TOLERANCE_TEMP;
+      bool higherThanLight = lightSensor.getLux() > LIGHT_THRES + AUTO_TOLERANCE_LIGHT;
+      bool lowerThanLight = lightSensor.getLux() < LIGHT_THRES - AUTO_TOLERANCE_LIGHT;
+      if (higherThanTemp && higherThanLight) {
+        motor.moveTowardClosed(MOTOR_TOLERANCE);
+      } else if (lowerThanTemp && higherThanLight) {
+        motor.moveTowardOpen(MOTOR_TOLERANCE);
+      } else if (lowerThanLight) {
+        motor.moveTowardOpen(MOTOR_TOLERANCE);
+      } else {
+        motor.moveTowardHalf(MOTOR_TOLERANCE);
+      }
+      if (digitalRead(exitButtonPin) == LOW) {
+        handleExit();
+      }
       break;
     case manual:
+      if (digitalRead(upButtonPin) == HIGH && digitalRead(downButtonPin) == HIGH) {
+        motor.stopMoving();
+      }
       if (digitalRead(upButtonPin) == LOW) {
-        motor.move_up();
+        motor.moveUp();
       }
       if (digitalRead(downButtonPin) == LOW) {
-        motor.move_down();
+        motor.moveDown();
+      }
+      if (digitalRead(exitButtonPin) == LOW) {
+        handleExit();
       }
       break;
   }
 }
-
-/*//counter updates with interrupt
-volatile double counter = 0;
-//interrupt numbers
-const uint8_t chAInter = 0;
-const uint8_t chBInter = 1;
-//input pins
-const uint8_t chAInput = 2;
-const uint8_t chBInput = 3;
-
-void changeA() {
-  //update counter based on event
-  if (digitalRead(chAInput) != digitalRead(chBInput)) {
-    counter++;
-  }
-  else {
-    counter--;
-  }
-}
-
-void changeB() {
-  //update counter based on event
-  if (digitalRead(chAInput) == digitalRead(chBInput)) {
-    counter++;
-  }
-  else {
-    counter--;
-  }
-}
-
-void setup() {
-  // interupt on channel A and B hall effect sensors
-  attachInterrupt(chAInter, changeA, CHANGE);
-  attachInterrupt(chBInter, changeB, CHANGE);
-  pinMode(chAInput, INPUT);
-  pinMode(chBInput, INPUT);
-  Serial.begin(9600);
-
-}
-
-void loop() {
-  Serial.println(counter);
-}
-*/
-/* LED display
-#include <SPI.h>
-#include <Wire.h>
-#include <Adafruit_SSD1306.h>
-#define SCREEN_WIDTH 128  // OLED display width, in pixels
-#define SCREEN_HEIGHT 64  // OLED display height, in pixels
-// Declaration for SSD1306 display connected using software SPI (default case):
-#define OLED_PICO 9
-#define OLED_CLK 10
-#define OLED_DC 11
-#define OLED_CS 12
-#define OLED_RESET 13
-
-Adafruit_SSD1306 display(OLED_PICO, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
-void setup() {
-  pinMode(2, OUTPUT);
-  pinMode(3, INPUT);
-  display.begin(SSD1306_SWITCHCAPVCC);
-  // Show initial display buffer contents on the screen --
-  // the library initializes this with an Adafruit splash screen.
-  display.display();
-  delay(2000);  // Pause for 2 seconds
-  // Clear the buffer
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 0);
-}
-
-void loop() {
-  //set to low
-  digitalWrite(2, LOW);
-  //wait 10 microseconds
-  delayMicroseconds(10);
-  //set to high to send the signal
-  digitalWrite(2, HIGH);
-  delayMicroseconds(10);
-  //signal sent
-  digitalWrite(2, LOW);
-  //wait for the echo signal
-  while(digitalRead(3) < 1){}
-  //receiving the return signal
-  unsigned long curr_time = micros();
-  while(digitalRead(3) > 0){}
-  //calculate distance
-  unsigned long t_roundtrip = micros() - curr_time;
-  double distance = t_roundtrip * 0.01715;
-
-  //displaying
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 0);
-  display.print(distance);
-  display.display();
-  delay(1000);
-}
-*/
