@@ -1,31 +1,52 @@
 #include "BlindsMotor.h"
 #include "Encoder.h"
 
-BlindsMotor::BlindsMotor(int upPin, int downPin)
-  : upPin(upPin), downPin(downPin) {}
+#define MOTOR_K 0.1f
+
+BlindsMotor::BlindsMotor(int upPin, int downPin, int pulsePin)
+  : upPin(upPin), downPin(downPin), pulsePin {}
 
 void BlindsMotor::moveUp() const {
   digitalWrite(downPin, LOW);
   digitalWrite(upPin, HIGH);
+  digitalWrite(pulsePin, HIGH);
 }
 
 void BlindsMotor::moveDown() const {
   digitalWrite(upPin, LOW);
   digitalWrite(downPin, HIGH);
+  digitalWrite(pulsePin, HIGH);
 }
 
 void BlindsMotor::stopMoving() const {
   digitalWrite(upPin, LOW);
   digitalWrite(downPin, LOW);
+  digitalWrite(pulsePin, LOW);
 }
 
-void BlindsMotor::moveToward(int pos, int tolerance) const {
-  int current_pos = getEncoderPos();
+void BlindsMotor::moveToward(long pos, int tolerance) const {
+  long currentPos = getEncoderPos();
   
-  if (current_pos < pos - tolerance)
+  if (currentPos < pos - tolerance)
     moveUp();
-  else if (current_pos > pos + tolerance)
+  else if (currentPos > pos + tolerance)
     moveDown();
   else
     stopMoving();
+
+  long diff = abs(pos - currentPos);
+  int power = 255 * (int)max(1.0, MOTOR_K * diff);
+  analogWrite(pulsePin, power);
+}
+
+void BlindsMotor::moveTowardClosed(int tolerance) {
+  moveToward(closedPos, tolerance);
+}
+
+void BlindsMotor::moveTowardHalf(int tolerance) {
+  moveToward(halfPos, tolerance);
+}
+
+void BlindsMotor::moveTowardOpen(int tolerance) {
+  moveToward(openPos, tolerance);
 }
