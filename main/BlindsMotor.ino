@@ -4,7 +4,7 @@
 #define MOTOR_K 0.1f
 
 BlindsMotor::BlindsMotor(int upPin, int downPin, int pulsePin)
-  : upPin(upPin), downPin(downPin), pulsePin {}
+  : upPin(upPin), downPin(downPin), pulsePin(pulsePin) {}
 
 void BlindsMotor::moveUp() const {
   digitalWrite(downPin, LOW);
