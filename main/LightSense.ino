@@ -1,13 +1,13 @@
 #include "LightSense.h"
 #include "Adafruit_LTR329_LTR303.h"
 
-LightSense::LightSense(int pin) {
-    pinMode(pin, INPUT);
-    luxPin = pin;
+LightSense::LightSense() {
+    // pinMode(pin, INPUT);
+    // luxPin = pin;
 }
 
 void LightSense::setupLTR() {
-    ltr = Adafruit_LTR329();
+    ltr = Adafruit_LTR303();
     ltr.begin();
 
     ltr.setGain(LTR3XX_GAIN_2);

@@ -19,7 +19,7 @@ float TempSense::getTemp() {
     float tempF = (tempC * 9.0 / 5.0) + 32.0;
 
     currentTemp = tempF;
-    return tempF
+    return tempF;
 }
 
 void TempSense::setTemp(int inputTemp) {

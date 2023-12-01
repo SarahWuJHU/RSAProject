@@ -1,13 +1,18 @@
 #include "Adafruit_LTR329_LTR303.h"
+#ifndef LIGHTSENSE_H
+#define LIGHTSENSE_H
 
 class LightSense {
     public:
-        LightSense(int pin);
+        // LightSense(int pin);
+        LightSense();
         void setupLTR();
-        float getLux();
+        uint16_t getLux();
 
     private:
         int luxPin;
         uint16_t currentLux;
-        Adafruit_LTR329 ltr;
+        Adafruit_LTR303 ltr;
 };
+
+#endif

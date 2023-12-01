@@ -1,3 +1,6 @@
+#ifndef TEMPSENSE_H
+#define TEMPSENSE_H
+
 class TempSense {
     public:
         TempSense(int pin);
@@ -10,3 +13,5 @@ class TempSense {
         float currentTemp;
         float desTemp;
 };
+
+#endif
