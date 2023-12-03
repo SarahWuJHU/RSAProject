@@ -1,3 +1,6 @@
+#ifndef BLINDS_MOTOR_INC
+#define BLINDS_MOTOR_INC
+
 class BlindsMotor {
 public:
   long closedPos = 0;
@@ -21,3 +24,5 @@ private:
   int downPin;
   int pulsePin;
 };
+
+#endif
