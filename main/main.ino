@@ -51,8 +51,8 @@ char open_position_word[] = "open_position";
 char close_position_word[] = "close_position";
 char half_position_word[] = "half_position";
 char temperature_word[] = "temperature";
-char* menu_items[] = { calibrate_word, automatic_word, manual_word };
-char* calibrate_items[] = { open_position_word, close_position_word, half_position_word, temperature_word };
+const char* menu_items[] = { calibrate_word, automatic_word, manual_word };
+const char* calibrate_items[] = { open_position_word, close_position_word, half_position_word, temperature_word };
 static MenuDisplay menu_display("Menu", menu_items, 3);
 static MenuDisplay calibration_display("Calibration", calibrate_items, 4);
 
@@ -67,7 +67,7 @@ const int motorPulsePin;
 const int tempSensorPin;
 
 static BlindsMotor motor(motorUpPin, motorDownPin, motorPulsePin);
-static LightSense lightSensor();
+static LightSense lightSensor;
 static TempSense tempSensor(tempSensorPin);
 Adafruit_SSD1306 display(OLED_PICO, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 static States myState = initializing;
