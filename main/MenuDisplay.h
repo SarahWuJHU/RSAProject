@@ -1,3 +1,6 @@
+#ifndef MENU_DISPLAY_INC
+#define MENU_DISPLAY_INC
+
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
@@ -20,3 +23,5 @@ public:
   void draw(Adafruit_SSD1306& oled);
   int getCursorPos() const;
 };
+
+#endif
