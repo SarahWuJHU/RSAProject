@@ -2,7 +2,7 @@
 #include "Adafruit_LTR329_LTR303.h"
 #include "TempSense.h"
 
-#define TEMPSENSE_PIN 8
+#define TEMPSENSE_PIN A3
 #define DESIRED_TEMP 70
 
 LightSense lux_sensor = LightSense();
