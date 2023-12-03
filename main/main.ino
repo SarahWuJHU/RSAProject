@@ -1,6 +1,6 @@
+#include "LightSense.h"
 #include "MenuDisplay.h"
 #include "BlindsMotor.h"
-#include "LightSense.h"
 #include "TempSense.h"
 #include "Encoder.h"
 
@@ -8,6 +8,7 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
+#include "Adafruit_LTR329_LTR303.h"
 #define SCREEN_WIDTH 128  // OLED display width, in pixels
 #define SCREEN_HEIGHT 64  // OLED display height, in pixels
 // Declaration for SSD1306 display connected using software SPI (default case):
@@ -63,11 +64,10 @@ const int selectButtonPin;
 const int motorUpPin;
 const int motorDownPin;
 const int motorPulsePin;
-const int lightSensorPin;
 const int tempSensorPin;
 
 static BlindsMotor motor(motorUpPin, motorDownPin, motorPulsePin);
-static LightSense lightSensor(lightSensorPin);
+static LightSense lightSensor();
 static TempSense tempSensor(tempSensorPin);
 Adafruit_SSD1306 display(OLED_PICO, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 static States myState = initializing;
@@ -81,7 +81,7 @@ struct Settings {
   long desired_temp;
 };
 
-Settings settings = { 0, 0, 0, 0};
+Settings settings = { 0, 0, 0, 60};
 
 
 void handleExit() {
