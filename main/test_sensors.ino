@@ -1,4 +1,4 @@
-#include "LightSense.h"
+/*#include "LightSense.h"
 #include "Adafruit_LTR329_LTR303.h"
 #include "TempSense.h"
 
@@ -33,4 +33,4 @@ void loop () {
     Serial.println("");
 
     delay(1000);
-}
+}*/
