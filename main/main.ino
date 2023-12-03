@@ -147,6 +147,11 @@ void setup() {
 }
 
 void loop() {
+  bool higherThanTemp;
+  bool lowerThanTemp;
+  bool higherThanLight;
+  bool lowerThanLight;
+  
   // put your main code here, to run repeatedly:
   // escape button logic
   if (digitalRead(exitButtonPin) == LOW) {
@@ -284,10 +289,10 @@ void loop() {
       break;
     case automatic:
       //sensor
-      bool higherThanTemp = tempSensor.getTemp() > settings.desired_temp + AUTO_TOLERANCE_TEMP;
-      bool lowerThanTemp = tempSensor.getTemp() < settings.desired_temp - AUTO_TOLERANCE_TEMP;
-      bool higherThanLight = lightSensor.getLux() > LIGHT_THRES + AUTO_TOLERANCE_LIGHT;
-      bool lowerThanLight = lightSensor.getLux() < LIGHT_THRES - AUTO_TOLERANCE_LIGHT;
+      higherThanTemp = tempSensor.getTemp() > settings.desired_temp + AUTO_TOLERANCE_TEMP;
+      lowerThanTemp = tempSensor.getTemp() < settings.desired_temp - AUTO_TOLERANCE_TEMP;
+      higherThanLight = lightSensor.getLux() > LIGHT_THRES + AUTO_TOLERANCE_LIGHT;
+      lowerThanLight = lightSensor.getLux() < LIGHT_THRES - AUTO_TOLERANCE_LIGHT;
       if (higherThanTemp && higherThanLight) {
         motor.moveTowardClosed(MOTOR_TOLERANCE);
       } else if (lowerThanTemp && higherThanLight) {
