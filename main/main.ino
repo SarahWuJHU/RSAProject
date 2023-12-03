@@ -57,14 +57,14 @@ static MenuDisplay menu_display("Menu", menu_items, 3);
 static MenuDisplay calibration_display("Calibration", calibrate_items, 4);
 
 //MenuDisplays Menu, Calibrate;
-const int upButtonPin;
-const int downButtonPin;
-const int exitButtonPin;
-const int selectButtonPin;
-const int motorUpPin;
-const int motorDownPin;
-const int motorPulsePin;
-const int tempSensorPin;
+const int upButtonPin = 10;
+const int downButtonPin = 11;
+const int exitButtonPin = 12;
+const int selectButtonPin = 13;
+const int motorUpPin = 0;
+const int motorDownPin = 0;
+const int motorPulsePin = 0;
+const int tempSensorPin = 0;
 
 static BlindsMotor motor(motorUpPin, motorDownPin, motorPulsePin);
 static LightSense lightSensor;
