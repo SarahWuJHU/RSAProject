@@ -15,6 +15,9 @@ long getEncoderPos() {
 void enableEncoderInterrupts(int upChannelPin, int downChannelPin) {
   upPin = upChannelPin;
   downPin = downChannelPin;
+
+  pinMode(upChannelPin, INPUT);
+  pinMode(downChannelPin, INPUT);
   
   attachInterrupt(digitalPinToInterrupt(upChannelPin), upIsr, CHANGE);
   attachInterrupt(digitalPinToInterrupt(downChannelPin), downIsr, CHANGE);
