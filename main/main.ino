@@ -61,10 +61,10 @@ const int upButtonPin = 10;
 const int downButtonPin = 11;
 const int exitButtonPin = 12;
 const int selectButtonPin = 13;
-const int motorUpPin = 0;
-const int motorDownPin = 0;
-const int motorPulsePin = 0;
-const int tempSensorPin = 0;
+const int motorUpPin = 3;
+const int motorDownPin = 4;
+const int motorPulsePin = 5;
+const int tempSensorPin = A3;
 
 static BlindsMotor motor(motorUpPin, motorDownPin, motorPulsePin);
 static LightSense lightSensor;
@@ -137,7 +137,6 @@ void handleDisplay(MenuDisplay* menu_dis, Control option) {
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
   pinMode(upButtonPin, INPUT_PULLUP);
   pinMode(downButtonPin, INPUT_PULLUP);
   pinMode(exitButtonPin, INPUT_PULLUP);
@@ -277,9 +276,10 @@ void loop() {
               display.clearDisplay();
               display.println(settings.desired_temp);
             }
-          }
-          if (digitalRead(exitButtonPin) == LOW) {
-            handleExit();
+            if (digitalRead(exitButtonPin) == LOW) {
+              handleExit();
+              break;
+            }
           }
           break;
       }
