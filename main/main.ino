@@ -152,6 +152,7 @@ void setup() {
   pinMode(selectButtonPin, INPUT_PULLUP);
 
   lightSensor.setupLTR();
+    display.begin(SSD1306_SWITCHCAPVCC);
 }
 
 void loop() {

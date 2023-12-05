@@ -23,6 +23,7 @@ void MenuDisplay::draw(Adafruit_SSD1306& oled) {
   oled.clearDisplay();
   oled.setCursor(0, 0);
   oled.setTextSize(1);
+  oled.setTextColor(WHITE);
   
   oled.println(title);
   for (int i = scrollPos; i < min(scrollPos + 3, numOptions); i++) {
