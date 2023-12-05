@@ -23,6 +23,7 @@
 #define LIGHT_THRES 300
 #define AUTO_TOLERANCE_TEMP 10
 #define AUTO_TOLERANCE_LIGHT 50
+#define BUTTON_BOUNCE 100
 
 enum States {
   initializing,
@@ -81,12 +82,13 @@ struct Settings {
   long desired_temp;
 };
 
-Settings settings = { 0, 0, 0, 60};
+Settings settings = { 0, 0, 0, 60 };
 
 
 void handleExit() {
   myState = menu;
   myCalibrationState = menu_cali;
+  delay(BUTTON_BOUNCE);
 }
 
 void moveToHalf() {
@@ -114,13 +116,20 @@ void moveMotorControl() {
   while (digitalRead(selectButtonPin) == HIGH) {
     if (digitalRead(upButtonPin) == LOW) {
       motor.moveUp();
+      delay(BUTTON_BOUNCE);
     }
     if (digitalRead(downButtonPin) == LOW) {
       motor.moveDown();
+      delay(BUTTON_BOUNCE);
     }
     if (digitalRead(upButtonPin) == HIGH && digitalRead(downButtonPin) == HIGH) {
       motor.stopMoving();
     }
+    if (digitalRead(exitButtonPin) == LOW) {
+      handleExit();
+      break;
+    }
+    delay(BUTTON_BOUNCE);
   }
 }
 
@@ -150,7 +159,7 @@ void loop() {
   bool lowerThanTemp;
   bool higherThanLight;
   bool lowerThanLight;
-  
+
   // put your main code here, to run repeatedly:
   // escape button logic
   if (digitalRead(exitButtonPin) == LOW) {
@@ -169,10 +178,12 @@ void loop() {
       if (digitalRead(upButtonPin) == LOW) {
         handleDisplay(&menu_display, up);
         menu_display.draw(display);
+        delay(BUTTON_BOUNCE);
       }
       if (digitalRead(downButtonPin) == LOW) {
         handleDisplay(&menu_display, down);
         menu_display.draw(display);
+        delay(BUTTON_BOUNCE);
       }
       if (digitalRead(selectButtonPin) == LOW) {
         int pos = menu_display.getCursorPos();
@@ -191,6 +202,7 @@ void loop() {
             menu_display.resetCursorPos();
             break;
         }
+        delay(BUTTON_BOUNCE);
       }
 
       break;
@@ -204,10 +216,12 @@ void loop() {
           if (digitalRead(upButtonPin) == LOW) {
             handleDisplay(&calibration_display, up);
             calibration_display.draw(display);
+            delay(BUTTON_BOUNCE);
           }
           if (digitalRead(downButtonPin) == LOW) {
             handleDisplay(&calibration_display, down);
             calibration_display.draw(display);
+            delay(BUTTON_BOUNCE);
           }
           if (digitalRead(selectButtonPin) == LOW) {
             int pos = calibration_display.getCursorPos();
@@ -230,6 +244,7 @@ void loop() {
                 menu_display.resetCursorPos();
                 break;
             }
+            delay(BUTTON_BOUNCE);
           }
           if (digitalRead(exitButtonPin) == LOW) {
             handleExit();
@@ -270,17 +285,20 @@ void loop() {
               settings.desired_temp++;
               display.clearDisplay();
               display.println(settings.desired_temp);
+              delay(BUTTON_BOUNCE);
             }
             if (digitalRead(downButtonPin) == LOW) {
               settings.desired_temp--;
               display.clearDisplay();
               display.println(settings.desired_temp);
+              delay(BUTTON_BOUNCE);
             }
             if (digitalRead(exitButtonPin) == LOW) {
               handleExit();
               break;
             }
           }
+
           break;
       }
       if (digitalRead(exitButtonPin) == LOW) {
@@ -312,9 +330,11 @@ void loop() {
       }
       if (digitalRead(upButtonPin) == LOW) {
         motor.moveUp();
+        delay(BUTTON_BOUNCE);
       }
       if (digitalRead(downButtonPin) == LOW) {
         motor.moveDown();
+        delay(BUTTON_BOUNCE);
       }
       if (digitalRead(exitButtonPin) == LOW) {
         handleExit();
