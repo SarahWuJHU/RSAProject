@@ -1,10 +1,16 @@
 #include "BlindsMotor.h"
 #include "Encoder.h"
 
-#define MOTOR_K 0.1f
+#define MOTOR_K 1.0f
 
 BlindsMotor::BlindsMotor(int upPin, int downPin, int pulsePin)
   : upPin(upPin), downPin(downPin), pulsePin(pulsePin) {}
+
+void BlindsMotor::begin() {
+  pinMode(upPin, OUTPUT);
+  pinMode(downPin, OUTPUT);
+  pinMode(pulsePin, OUTPUT);
+}
 
 void BlindsMotor::moveUp() const {
   digitalWrite(downPin, LOW);

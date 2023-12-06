@@ -8,6 +8,8 @@ public:
   long openPos = 0;
 
   BlindsMotor(int upPin, int downPin, int pulsePin);
+
+  void begin();
   
   void moveUp() const;
   void moveDown() const;
