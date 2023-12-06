@@ -19,7 +19,7 @@
 #define OLED_RESET 13
 
 // other settings for automatic control
-#define MOTOR_TOLERANCE 1
+#define MOTOR_TOLERANCE 10
 #define LIGHT_THRES 300
 #define AUTO_TOLERANCE_TEMP 10
 #define AUTO_TOLERANCE_LIGHT 50
@@ -58,13 +58,15 @@ static MenuDisplay menu_display("Menu", menu_items, 3);
 static MenuDisplay calibration_display("Calibration", calibrate_items, 4);
 
 //MenuDisplays Menu, Calibrate;
-const int upButtonPin = 10;
-const int downButtonPin = 11;
-const int exitButtonPin = 12;
-const int selectButtonPin = 13;
-const int motorUpPin = 3;
-const int motorDownPin = 4;
+const int upButtonPin = A0;
+const int downButtonPin = A1;
+const int exitButtonPin = A2;
+const int selectButtonPin = 4;
+const int motorUpPin = 6;
+const int motorDownPin = 7;
 const int motorPulsePin = 5;
+const int encoderUpPin = 3;
+const int encoderDownPin = 2;
 const int tempSensorPin = A3;
 
 static BlindsMotor motor(motorUpPin, motorDownPin, motorPulsePin);
@@ -92,21 +94,21 @@ void handleExit() {
 }
 
 void moveToHalf() {
-  while (abs(getEncoderPos() - settings.half_pose) < MOTOR_TOLERANCE) {
+  while (abs(getEncoderPos() - settings.half_pose) > MOTOR_TOLERANCE) {
     motor.moveTowardHalf(MOTOR_TOLERANCE);
   }
   motor.stopMoving();
 }
 
 void moveToOpen() {
-  while (abs(getEncoderPos() - settings.open_pose) < MOTOR_TOLERANCE) {
+  while (abs(getEncoderPos() - settings.open_pose) > MOTOR_TOLERANCE) {
     motor.moveTowardOpen(MOTOR_TOLERANCE);
   }
   motor.stopMoving();
 }
 
 void moveToClosed() {
-  while (abs(getEncoderPos() - settings.closed_pose) < MOTOR_TOLERANCE) {
+  while (abs(getEncoderPos() - settings.closed_pose) > MOTOR_TOLERANCE) {
     motor.moveTowardClosed(MOTOR_TOLERANCE);
   }
   motor.stopMoving();
@@ -152,7 +154,13 @@ void setup() {
   pinMode(selectButtonPin, INPUT_PULLUP);
 
   lightSensor.setupLTR();
-    display.begin(SSD1306_SWITCHCAPVCC);
+  motor.begin();
+  
+  display.begin(SSD1306_SWITCHCAPVCC);
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+
+  enableEncoderInterrupts(encoderUpPin, encoderDownPin);
 }
 
 void loop() {
@@ -252,6 +260,11 @@ void loop() {
           }
           break;
         case open_position:
+          display.clearDisplay();
+          display.setCursor(0, 0);
+          display.println("Calibrating open\nposition");
+          display.display();
+          
           moveToOpen();
           moveMotorControl();
           motor.openPos = getEncoderPos();
@@ -261,6 +274,11 @@ void loop() {
           }
           break;
         case close_position:
+          display.clearDisplay();
+          display.setCursor(0, 0);
+          display.println("Calibrating closed\nposition");
+          display.display();
+          
           moveToClosed();
           moveMotorControl();
           motor.closedPos = getEncoderPos();
@@ -270,6 +288,11 @@ void loop() {
           }
           break;
         case half_position:
+          display.clearDisplay();
+          display.setCursor(0, 0);
+          display.println("Calibrating half openposition");
+          display.display();
+          
           moveToHalf();
           moveMotorControl();
           motor.halfPos = getEncoderPos();
@@ -279,22 +302,21 @@ void loop() {
           }
           break;
         case temperature_cali:
-          display.clearDisplay();
-          display.println(settings.desired_temp);
-          while (digitalRead(selectButtonPin) == HIGH) {
+          while (true) {
+            display.clearDisplay();
+            display.setCursor(0, 0);
+            display.println(settings.desired_temp);
+            display.display();
+  
             if (digitalRead(upButtonPin) == LOW) {
               settings.desired_temp++;
-              display.clearDisplay();
-              display.println(settings.desired_temp);
               delay(BUTTON_BOUNCE);
             }
             if (digitalRead(downButtonPin) == LOW) {
               settings.desired_temp--;
-              display.clearDisplay();
-              display.println(settings.desired_temp);
               delay(BUTTON_BOUNCE);
             }
-            if (digitalRead(exitButtonPin) == LOW) {
+            if (digitalRead(exitButtonPin) == LOW || digitalRead(selectButtonPin) == LOW) {
               handleExit();
               break;
             }
@@ -307,6 +329,10 @@ void loop() {
       }
       break;
     case automatic:
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.println("In automatic mode");
+      display.display();
       //sensor
       higherThanTemp = tempSensor.getTemp() > settings.desired_temp + AUTO_TOLERANCE_TEMP;
       lowerThanTemp = tempSensor.getTemp() < settings.desired_temp - AUTO_TOLERANCE_TEMP;
@@ -326,6 +352,11 @@ void loop() {
       }
       break;
     case manual:
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.println("In manual mode");
+      display.display();
+      
       if (digitalRead(upButtonPin) == HIGH && digitalRead(downButtonPin) == HIGH) {
         motor.stopMoving();
       }
