@@ -1,7 +1,7 @@
 #include "BlindsMotor.h"
 #include "Encoder.h"
 
-#define MOTOR_K 1.0f
+#define MOTOR_K 10.0f
 
 BlindsMotor::BlindsMotor(int upPin, int downPin, int pulsePin)
   : upPin(upPin), downPin(downPin), pulsePin(pulsePin) {}
@@ -41,7 +41,7 @@ void BlindsMotor::moveToward(long pos, int tolerance) const {
     stopMoving();
 
   long diff = abs(pos - currentPos);
-  int power = 255 * (int)max(1.0, MOTOR_K * diff);
+  int power = (int)min(255, MOTOR_K * diff);
   analogWrite(pulsePin, power);
 }
 

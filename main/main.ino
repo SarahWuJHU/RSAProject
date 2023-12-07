@@ -6,6 +6,7 @@
 //eeprom
 #include <EEPROM.h>
 #include <EEWrap.h>
+#define EEADDRESS 42
 //OLED display settings
 #include <SPI.h>
 #include <Wire.h>
@@ -21,8 +22,8 @@
 #define OLED_RESET 13
 
 // other settings for automatic control
-#define MOTOR_TOLERANCE 5
-#define LIGHT_THRES 300
+#define MOTOR_TOLERANCE 10
+#define LIGHT_THRES 400
 #define AUTO_TOLERANCE_TEMP 10
 #define AUTO_TOLERANCE_LIGHT 50
 #define BUTTON_BOUNCE 100
@@ -99,7 +100,7 @@ void handleExit() {
 void moveToHalf() {
   while (abs(getEncoderPos() - settings.half_pose) > MOTOR_TOLERANCE) {
     while (abs(getEncoderPos() - settings.half_pose) > MOTOR_TOLERANCE) {
-      motor.moveTowardHalf(MOTOR_TOLERANCE);
+      motor.moveToward(settings.half_pose,MOTOR_TOLERANCE);
     }
     motor.stopMoving();
     delay(10);
@@ -109,7 +110,7 @@ void moveToHalf() {
 void moveToOpen() {
   while (abs(getEncoderPos() - settings.open_pose) > MOTOR_TOLERANCE) {
     while (abs(getEncoderPos() - settings.open_pose) > MOTOR_TOLERANCE) {
-      motor.moveTowardOpen(MOTOR_TOLERANCE);
+      motor.moveToward(settings.open_pose,MOTOR_TOLERANCE);
     }
     motor.stopMoving();
     delay(10);
@@ -129,7 +130,7 @@ void moveToZero() {
 void moveToClosed() {
   while (abs(getEncoderPos() - settings.closed_pose) > MOTOR_TOLERANCE) {
     while (abs(getEncoderPos() - settings.closed_pose) > MOTOR_TOLERANCE) {
-      motor.moveTowardClosed(MOTOR_TOLERANCE);
+      motor.moveToward(settings.closed_pose,MOTOR_TOLERANCE);
     }
     motor.stopMoving();
     delay(10);
@@ -196,6 +197,8 @@ void loop() {
       //loading settings
       myState = menu;
       menu_display.draw(display);
+      EEPROM.get(EEADDRESS, settings);
+
       break;
     case menu:
       if (digitalRead(exitButtonPin) == LOW) {
@@ -267,14 +270,17 @@ void loop() {
               case 1:
                 myCalibrationState = close_position;
                 menu_display.resetCursorPos();
+                calibration_display.resetCursorPos();
                 break;
               case 2:
                 myCalibrationState = half_position;
                 menu_display.resetCursorPos();
+                calibration_display.resetCursorPos();
                 break;
               case 3:
                 myCalibrationState = temperature_cali;
                 menu_display.resetCursorPos();
+                calibration_display.resetCursorPos();
                 break;
             }
             delay(BUTTON_BOUNCE);
@@ -293,9 +299,8 @@ void loop() {
           moveMotorControl();
           motor.openPos = getEncoderPos();
           settings.open_pose = motor.openPos;
-          if (digitalRead(exitButtonPin) == LOW) {
-            handleExit();
-          }
+          EEPROM.put(EEADDRESS, settings);
+          handleExit();
           break;
         case close_position:
           display.clearDisplay();
@@ -307,9 +312,8 @@ void loop() {
           moveMotorControl();
           motor.closedPos = getEncoderPos();
           settings.closed_pose = motor.closedPos;
-          if (digitalRead(exitButtonPin) == LOW) {
-            handleExit();
-          }
+          EEPROM.put(EEADDRESS, settings);
+          handleExit();
           break;
         case half_position:
           display.clearDisplay();
@@ -321,9 +325,8 @@ void loop() {
           moveMotorControl();
           motor.halfPos = getEncoderPos();
           settings.half_pose = motor.halfPos;
-          if (digitalRead(exitButtonPin) == LOW) {
-            handleExit();
-          }
+          EEPROM.put(EEADDRESS, settings);
+          handleExit();
           break;
         case temperature_cali:
           while (true) {
@@ -341,6 +344,7 @@ void loop() {
               delay(BUTTON_BOUNCE);
             }
             if (digitalRead(exitButtonPin) == LOW || digitalRead(selectButtonPin) == LOW) {
+              EEPROM.put(EEADDRESS, settings);
               handleExit();
               break;
             }
