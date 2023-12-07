@@ -3,7 +3,9 @@
 #include "BlindsMotor.h"
 #include "TempSense.h"
 #include "Encoder.h"
-
+//eeprom
+#include <EEPROM.h>
+#include <EEWrap.h>
 //OLED display settings
 #include <SPI.h>
 #include <Wire.h>
@@ -19,7 +21,7 @@
 #define OLED_RESET 13
 
 // other settings for automatic control
-#define MOTOR_TOLERANCE 10
+#define MOTOR_TOLERANCE 5
 #define LIGHT_THRES 300
 #define AUTO_TOLERANCE_TEMP 10
 #define AUTO_TOLERANCE_LIGHT 50
@@ -54,8 +56,8 @@ char half_position_word[] = "half_position";
 char temperature_word[] = "temperature";
 const char* menu_items[] = { calibrate_word, automatic_word, manual_word };
 const char* calibrate_items[] = { open_position_word, close_position_word, half_position_word, temperature_word };
-static MenuDisplay menu_display("Menu", menu_items, 3);
-static MenuDisplay calibration_display("Calibration", calibrate_items, 4);
+static MenuDisplay menu_display("   MENU", menu_items, 3);
+static MenuDisplay calibration_display("    CALIBRATION", calibrate_items, 4);
 
 //MenuDisplays Menu, Calibrate;
 const int upButtonPin = A0;
@@ -90,48 +92,66 @@ Settings settings = { 0, 0, 0, 60 };
 void handleExit() {
   myState = menu;
   myCalibrationState = menu_cali;
+  menu_display.draw(display);
   delay(BUTTON_BOUNCE);
 }
 
 void moveToHalf() {
   while (abs(getEncoderPos() - settings.half_pose) > MOTOR_TOLERANCE) {
-    motor.moveTowardHalf(MOTOR_TOLERANCE);
+    while (abs(getEncoderPos() - settings.half_pose) > MOTOR_TOLERANCE) {
+      motor.moveTowardHalf(MOTOR_TOLERANCE);
+    }
+    motor.stopMoving();
+    delay(10);
   }
-  motor.stopMoving();
 }
 
 void moveToOpen() {
   while (abs(getEncoderPos() - settings.open_pose) > MOTOR_TOLERANCE) {
-    motor.moveTowardOpen(MOTOR_TOLERANCE);
+    while (abs(getEncoderPos() - settings.open_pose) > MOTOR_TOLERANCE) {
+      motor.moveTowardOpen(MOTOR_TOLERANCE);
+    }
+    motor.stopMoving();
+    delay(10);
   }
-  motor.stopMoving();
+}
+
+void moveToZero() {
+  while (abs(getEncoderPos() - 0) > MOTOR_TOLERANCE) {
+    while (abs(getEncoderPos() - 0) > MOTOR_TOLERANCE) {
+      motor.moveToward(0, MOTOR_TOLERANCE);
+    }
+    motor.stopMoving();
+    delay(10);
+  }
 }
 
 void moveToClosed() {
   while (abs(getEncoderPos() - settings.closed_pose) > MOTOR_TOLERANCE) {
-    motor.moveTowardClosed(MOTOR_TOLERANCE);
+    while (abs(getEncoderPos() - settings.closed_pose) > MOTOR_TOLERANCE) {
+      motor.moveTowardClosed(MOTOR_TOLERANCE);
+    }
+    motor.stopMoving();
+    delay(10);
   }
-  motor.stopMoving();
 }
 
 void moveMotorControl() {
-  while (digitalRead(selectButtonPin) == HIGH) {
+  while (true) {
+    delay(BUTTON_BOUNCE);
     if (digitalRead(upButtonPin) == LOW) {
       motor.moveUp();
-      delay(BUTTON_BOUNCE);
     }
     if (digitalRead(downButtonPin) == LOW) {
       motor.moveDown();
-      delay(BUTTON_BOUNCE);
     }
     if (digitalRead(upButtonPin) == HIGH && digitalRead(downButtonPin) == HIGH) {
       motor.stopMoving();
     }
-    if (digitalRead(exitButtonPin) == LOW) {
+    if (digitalRead(exitButtonPin) == LOW || digitalRead(selectButtonPin) == LOW) {
       handleExit();
       break;
     }
-    delay(BUTTON_BOUNCE);
   }
 }
 
@@ -155,7 +175,7 @@ void setup() {
 
   lightSensor.setupLTR();
   motor.begin();
-  
+
   display.begin(SSD1306_SWITCHCAPVCC);
   display.setTextSize(1);
   display.setTextColor(WHITE);
@@ -171,18 +191,15 @@ void loop() {
 
   // put your main code here, to run repeatedly:
   // escape button logic
-  if (digitalRead(exitButtonPin) == LOW) {
-    handleExit();
-  }
   switch (myState) {
     case initializing:
       //loading settings
       myState = menu;
+      menu_display.draw(display);
       break;
     case menu:
-      menu_display.draw(display);
       if (digitalRead(exitButtonPin) == LOW) {
-        handleExit();
+        moveToZero();
       }
       if (digitalRead(upButtonPin) == LOW) {
         handleDisplay(&menu_display, up);
@@ -205,15 +222,22 @@ void loop() {
           case 1:
             myState = automatic;
             menu_display.resetCursorPos();
+            display.clearDisplay();
+            display.setCursor(0, 0);
+            display.println("In automatic mode");
+            display.display();
             break;
           case 2:
             myState = manual;
             menu_display.resetCursorPos();
+            display.clearDisplay();
+            display.setCursor(0, 0);
+            display.println("In manual mode");
+            display.display();
             break;
         }
         delay(BUTTON_BOUNCE);
       }
-
       break;
     case calibrate:
       // calibration start
@@ -264,7 +288,7 @@ void loop() {
           display.setCursor(0, 0);
           display.println("Calibrating open\nposition");
           display.display();
-          
+
           moveToOpen();
           moveMotorControl();
           motor.openPos = getEncoderPos();
@@ -278,7 +302,7 @@ void loop() {
           display.setCursor(0, 0);
           display.println("Calibrating closed\nposition");
           display.display();
-          
+
           moveToClosed();
           moveMotorControl();
           motor.closedPos = getEncoderPos();
@@ -292,7 +316,7 @@ void loop() {
           display.setCursor(0, 0);
           display.println("Calibrating half openposition");
           display.display();
-          
+
           moveToHalf();
           moveMotorControl();
           motor.halfPos = getEncoderPos();
@@ -307,7 +331,7 @@ void loop() {
             display.setCursor(0, 0);
             display.println(settings.desired_temp);
             display.display();
-  
+
             if (digitalRead(upButtonPin) == LOW) {
               settings.desired_temp++;
               delay(BUTTON_BOUNCE);
@@ -329,10 +353,7 @@ void loop() {
       }
       break;
     case automatic:
-      display.clearDisplay();
-      display.setCursor(0, 0);
-      display.println("In automatic mode");
-      display.display();
+
       //sensor
       higherThanTemp = tempSensor.getTemp() > settings.desired_temp + AUTO_TOLERANCE_TEMP;
       lowerThanTemp = tempSensor.getTemp() < settings.desired_temp - AUTO_TOLERANCE_TEMP;
@@ -352,11 +373,7 @@ void loop() {
       }
       break;
     case manual:
-      display.clearDisplay();
-      display.setCursor(0, 0);
-      display.println("In manual mode");
-      display.display();
-      
+
       if (digitalRead(upButtonPin) == HIGH && digitalRead(downButtonPin) == HIGH) {
         motor.stopMoving();
       }
