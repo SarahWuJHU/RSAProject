@@ -9,8 +9,11 @@ RSA Final Project
 #include "BlindsMotor.h"
 #include "TempSense.h"
 #include "Encoder.h"
-
-// Set OLED display settings
+//eeprom
+#include <EEPROM.h>
+#include <EEWrap.h>
+#define EEADDRESS 42
+//OLED display settings
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
@@ -27,7 +30,7 @@ RSA Final Project
 
 // Other settings for automatic control
 #define MOTOR_TOLERANCE 10 // tolerance designating when the motor has reached its position
-#define LIGHT_THRES 300 // boundary indicating when to consider 'light' or 'dark'
+#define LIGHT_THRES 400 // boundary indicating when to consider 'light' or 'dark'
 #define AUTO_TOLERANCE_TEMP 10 // tolerance for temperature sensor boundary in automatic mode
 #define AUTO_TOLERANCE_LIGHT 50 // tolerance for light sensor boundary in automatic mode
 #define BUTTON_BOUNCE 100 // tolerance to avoid button bouncing
@@ -66,8 +69,8 @@ char half_position_word[] = "half_position";
 char temperature_word[] = "temperature";
 const char* menu_items[] = { calibrate_word, automatic_word, manual_word };
 const char* calibrate_items[] = { open_position_word, close_position_word, half_position_word, temperature_word };
-static MenuDisplay menu_display("Menu", menu_items, 3);
-static MenuDisplay calibration_display("Calibration", calibrate_items, 4);
+static MenuDisplay menu_display("   MENU", menu_items, 3);
+static MenuDisplay calibration_display("    CALIBRATION", calibrate_items, 4);
 
 // Set pins for MenuDisplays Menu, Calibrate;
 const int upButtonPin = A0;
@@ -103,52 +106,70 @@ Settings settings = { 0, 0, 0, 60 };
 void handleExit() {
   myState = menu;
   myCalibrationState = menu_cali;
+  menu_display.draw(display);
   delay(BUTTON_BOUNCE);
 }
 
 // Function for moving to half open position
 void moveToHalf() {
   while (abs(getEncoderPos() - settings.half_pose) > MOTOR_TOLERANCE) {
-    motor.moveTowardHalf(MOTOR_TOLERANCE);
+    while (abs(getEncoderPos() - settings.half_pose) > MOTOR_TOLERANCE) {
+      motor.moveToward(settings.half_pose,MOTOR_TOLERANCE);
+    }
+    motor.stopMoving();
+    delay(10);
   }
-  motor.stopMoving();
 }
 
 // Function for moving to open position
 void moveToOpen() {
   while (abs(getEncoderPos() - settings.open_pose) > MOTOR_TOLERANCE) {
-    motor.moveTowardOpen(MOTOR_TOLERANCE);
+    while (abs(getEncoderPos() - settings.open_pose) > MOTOR_TOLERANCE) {
+      motor.moveToward(settings.open_pose,MOTOR_TOLERANCE);
+    }
+    motor.stopMoving();
+    delay(10);
   }
-  motor.stopMoving();
+}
+
+void moveToZero() {
+  while (abs(getEncoderPos() - 0) > MOTOR_TOLERANCE) {
+    while (abs(getEncoderPos() - 0) > MOTOR_TOLERANCE) {
+      motor.moveToward(0, MOTOR_TOLERANCE);
+    }
+    motor.stopMoving();
+    delay(10);
+  }
 }
 
 // Function for moving to closed position
 void moveToClosed() {
   while (abs(getEncoderPos() - settings.closed_pose) > MOTOR_TOLERANCE) {
-    motor.moveTowardClosed(MOTOR_TOLERANCE);
+    while (abs(getEncoderPos() - settings.closed_pose) > MOTOR_TOLERANCE) {
+      motor.moveToward(settings.closed_pose,MOTOR_TOLERANCE);
+    }
+    motor.stopMoving();
+    delay(10);
   }
-  motor.stopMoving();
 }
 
 // Case for manually moving the motor up, down, or not moving
 void moveMotorControl() {
-  while (digitalRead(selectButtonPin) == HIGH) {
+  while (true) {
+    delay(BUTTON_BOUNCE);
     if (digitalRead(upButtonPin) == LOW) {
       motor.moveUp();
-      delay(BUTTON_BOUNCE);
     }
     if (digitalRead(downButtonPin) == LOW) {
       motor.moveDown();
-      delay(BUTTON_BOUNCE);
     }
     if (digitalRead(upButtonPin) == HIGH && digitalRead(downButtonPin) == HIGH) {
       motor.stopMoving();
     }
-    if (digitalRead(exitButtonPin) == LOW) {
+    if (digitalRead(exitButtonPin) == LOW || digitalRead(selectButtonPin) == LOW) {
       handleExit();
       break;
     }
-    delay(BUTTON_BOUNCE);
   }
 }
 
@@ -173,7 +194,7 @@ void setup() {
 
   lightSensor.setupLTR();
   motor.begin();
-  
+
   display.begin(SSD1306_SWITCHCAPVCC);
   display.setTextSize(1);
   display.setTextColor(WHITE);
@@ -196,15 +217,17 @@ void loop() {
   // Main state machine
   switch (myState) {
     case initializing:
-      // Loading settings
-      myState = menu; // enter main menu
+      //loading settings
+      myState = menu;
+      menu_display.draw(display);
+      EEPROM.get(EEADDRESS, settings);
+
       break;
 
     // Main menu
     case menu:
-      menu_display.draw(display);
-      if (digitalRead(exitButtonPin) == LOW) { // check for exit button
-        handleExit();
+      if (digitalRead(exitButtonPin) == LOW) {
+        moveToZero();
       }
       if (digitalRead(upButtonPin) == LOW) { // scroll up
         handleDisplay(&menu_display, up);
@@ -227,15 +250,22 @@ void loop() {
           case 1:
             myState = automatic; // go to automatic mode
             menu_display.resetCursorPos();
+            display.clearDisplay();
+            display.setCursor(0, 0);
+            display.println("In automatic mode");
+            display.display();
             break;
           case 2:
             myState = manual; // go to manual mode
             menu_display.resetCursorPos();
+            display.clearDisplay();
+            display.setCursor(0, 0);
+            display.println("In manual mode");
+            display.display();
             break;
         }
         delay(BUTTON_BOUNCE);
       }
-
       break;
 
     // Begin Calibration Menu
@@ -264,14 +294,17 @@ void loop() {
               case 1:
                 myCalibrationState = close_position; // calibrate closed position
                 menu_display.resetCursorPos();
+                calibration_display.resetCursorPos();
                 break;
               case 2:
                 myCalibrationState = half_position; // calibrate half-open position
                 menu_display.resetCursorPos();
+                calibration_display.resetCursorPos();
                 break;
               case 3:
                 myCalibrationState = temperature_cali; // calibrate temperature
                 menu_display.resetCursorPos();
+                calibration_display.resetCursorPos();
                 break;
             }
             delay(BUTTON_BOUNCE);
@@ -287,14 +320,13 @@ void loop() {
           display.setCursor(0, 0);
           display.println("Calibrating open\nposition");
           display.display();
-          
+
           moveToOpen();
           moveMotorControl();
           motor.openPos = getEncoderPos(); // after the motor has been moved, save the open position
           settings.open_pose = motor.openPos;
-          if (digitalRead(exitButtonPin) == LOW) {
-            handleExit();
-          }
+          EEPROM.put(EEADDRESS, settings);
+          handleExit();
           break;
 
         // Calibrate the closed position
@@ -303,14 +335,13 @@ void loop() {
           display.setCursor(0, 0);
           display.println("Calibrating closed\nposition");
           display.display();
-          
+
           moveToClosed();
           moveMotorControl();
           motor.closedPos = getEncoderPos(); // after the motor has been moved, save the closed position
           settings.closed_pose = motor.closedPos;
-          if (digitalRead(exitButtonPin) == LOW) {
-            handleExit();
-          }
+          EEPROM.put(EEADDRESS, settings);
+          handleExit();
           break;
 
         // Calibrate the half-open position
@@ -319,7 +350,7 @@ void loop() {
           display.setCursor(0, 0);
           display.println("Calibrating half openposition");
           display.display();
-          
+
           moveToHalf();
           moveMotorControl();
           motor.halfPos = getEncoderPos();
@@ -346,6 +377,7 @@ void loop() {
               delay(BUTTON_BOUNCE);
             }
             if (digitalRead(exitButtonPin) == LOW || digitalRead(selectButtonPin) == LOW) {
+              EEPROM.put(EEADDRESS, settings);
               handleExit();
               break;
             }
